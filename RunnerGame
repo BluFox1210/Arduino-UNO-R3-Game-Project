@@ -1,0 +1,586 @@
+// C++ code
+//
+
+#include <Wire.h>
+#include <SSD1306.h>
+
+#define A 8
+#define B 9
+#define Power 2
+
+SSD1306 display;
+
+// Arduino & Game State variables
+bool On = false;	// Game On/Off
+int State = 0;	/* Game States
+				States:
+                0: Main Menu
+                1: Play
+                2: Options
+                3: Exit
+                4: Game Over
+                */
+bool Select = false;	// Select Menu Option
+int Change = 0;			// Change Menu Option
+bool fast = false;
+
+// Running Game variables
+bool Airborne = false;	// Player jumped
+int JumpClock = 0;		// Time spent in the air
+bool Alive = true;
+int Score = 0;
+long Chnce;
+
+// Object Coordinates
+int PlayerY = 40;			// Can be 0 or 1
+struct {
+  int coordX = -1;
+  bool hasSpawned = false;
+  int SpawnChance = 24;
+} Obj1, Obj2, Obj3, Obj4;
+
+
+
+
+// Settings Variables
+int DiffSpeed = 900;	// Set Game Speed. Lower = Faster
+int GameSpeed;
+
+// Interrupt Function for Power Switch
+void Pow()
+{
+  Serial.println("Interrupt Occurred");
+	// Check if Switch is on
+  	if(digitalRead(Power) == 1)
+    {
+     	 On = true;
+    }
+  	else
+    {
+     	 On = false;
+    }
+}
+
+// Interrupt Function for Push Buttons
+void ButtonPress()
+{
+  if(digitalRead(A) == 1)
+  {
+ 	Serial.println("Button A pressed");
+    
+    switch(State)
+    {    
+   	 case 0:	// Main Menu
+     {
+     	Select = true;
+       	break;
+     }
+     case 1:	// Game Running
+     {
+        if(!Airborne)
+        {
+          Airborne = true;
+          JumpClock = 2;
+          PlayerY = 15;
+        }
+     	break;   
+     }
+     case 2:	// Options
+     {
+     	Select = true;
+       	break;
+     }
+     case 3:	// Exit
+     {
+     	break;   
+     }
+     default:	// Switch Default: Exit
+     {
+       	break; 
+     }
+    };
+  }
+  
+  if(digitalRead(B) == 1)
+  {
+   	Serial.println("Button B pressed"); 
+    
+    switch(State)
+    {    
+   	 case 0:	// Main Menu
+     {
+       	Serial.println("State 0: Change");
+       	Serial.println(Change);
+     	Change++;
+       	if(Change == 3)
+        {
+        	Change = 0;
+        }
+       	break;
+     }
+     case 1:	// Game Running
+     {
+      	Serial.println("State 1: Fastfall");
+      	Airborne = false;
+     	break;   
+     }
+     case 2:	// Options
+     {
+       	Serial.println("State 2: Change");
+     	Change++;
+       	if(Change == 2)
+        {
+         	Change = 0; 
+        }
+       	break;
+     }
+     case 3:	// Exit
+     {
+       	Serial.println("State 3:");
+     	break;   
+     }
+     default:	// Switch Default: Exit
+     {
+       	break; 
+     }
+  	};
+  }
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  // Start the LCD Screen
+  Wire.begin();
+  display.init();
+  display.clear();                  // Clear all text
+  delay(500);
+  
+  Serial.println("Starting...");
+  display.setCaret(32,32);          // Change Screen position
+  display.setScale(1);              // Change Text Size
+  display.print(F("Starting..."));  // Print Text
+  display.update();                 // Update LCD Screen
+  pinMode(A, INPUT);		// A Button
+  pinMode(B, INPUT);		// B Button
+  pinMode(Power, INPUT_PULLUP);	// Verify for Power
+  attachInterrupt(INT0,Pow,CHANGE);	//Setup Interrupt
+  attachInterrupt(INT1,ButtonPress,CHANGE);	//Setup Interrupt
+  
+  randomSeed(analogRead(A0));
+  
+  if(digitalRead(Power) == 1)
+  {
+    On = true;
+  }
+
+  delay(2000);
+  display.clear();
+  display.update();
+}
+
+void loop()
+{
+  Serial.println(digitalRead(Power));
+  
+  while(On)
+  {
+    switch(State)
+    {    
+   	 case 0:	// Main Menu
+     {
+       	display.clear();
+       	display.setCaret(10,5);
+        display.setScale(2);
+     	  display.print("Runner");
+       
+       	switch(Change)
+        {
+          case 0:
+          {
+            Serial.println("Play Hovered");
+            display.setCaret(0,25);
+            display.setScale(1);
+            display.print(">Play");
+            display.setCaret(0,35);
+            display.print(" Opt");
+            display.setCaret(0,45);
+            display.print(" Exit");
+
+            if(Select)
+            {
+              	State = 1;
+              	Select = false;
+              	Change = 0;
+            }
+           	break; 
+          }
+          case 1:
+          {
+            Serial.println("Option Hovered");
+            display.setCaret(0,25);
+            display.setScale(1);
+            display.print(" Play");
+            display.setCaret(0,35);
+            display.print(">Opt");
+            display.setCaret(0,45);
+            display.print(" Exit");
+            if(Select)
+            {
+              	State = 2;
+              	Select = false;
+              	Change = 0;
+            }
+            break;
+          }
+          case 2:
+          {
+            Serial.println("Exit Hovered");
+            display.setCaret(0,25);
+            display.setScale(1);
+            display.print(" Play");
+            display.setCaret(0,35);
+            display.print(" Opt");
+            display.setCaret(0,45);
+            display.print(">Exit");
+            if(Select)
+            {
+              	State = 0;
+              	Select = false;
+              	Change = 0;
+              	On = false;
+            }
+           	break; 
+          }
+          default:
+          {
+            Serial.println("Default");
+            display.setCaret(0,25);
+            display.setScale(1);
+            display.print(">Play");
+            display.setCaret(0,35);
+            display.print(" Opt");
+            display.setCaret(0,45);
+            display.print(" Exit");
+           	break; 
+          }
+        }
+       	break;
+     };
+     case 1:	// Game Running
+     {
+       	// Reset Game Variables
+       	Alive = true;
+        Airborne = false;
+       	Score = 0;
+       
+		    Obj1.hasSpawned = false;  
+       	Obj2.hasSpawned = false;
+       	Obj3.hasSpawned = false;
+       	Obj4.hasSpawned = false;
+       
+       	Obj1.coordX = -1;
+       	Obj2.coordX = -1;
+       	Obj3.coordX = -1;
+       	Obj4.coordX = -1;
+       
+       	GameSpeed = DiffSpeed;
+       
+        display.setScale(2);
+        display.clear();
+       	while(Alive)
+        {
+          // Update Player Position
+          display.setCaret(0,43);
+          display.print("_________________");
+          display.setCaret(10,PlayerY);
+          display.print("i");
+          
+          // Move existing obstacles
+          if(Obj1.hasSpawned)
+          {
+            Obj1.coordX-=10;
+            if(Obj1.coordX >= 0)
+            {
+              // New Position
+              display.setCaret(Obj1.coordX,40);
+              display.print("M");
+            }
+            else
+            {
+              Obj1.hasSpawned = false;
+            }
+          }
+          
+          if(Obj2.hasSpawned)
+          {
+            Obj2.coordX-=10;
+            if(Obj2.coordX >= 0)
+            {
+              // New Position
+              display.setCaret(Obj2.coordX,40);
+              display.print("M");
+            }
+            else
+            {
+              Obj2.hasSpawned = false;
+            }
+          }
+           
+          if(Obj3.hasSpawned)
+          {
+            Obj3.coordX-=10;
+            if(Obj3.coordX >= 0)
+            {
+              // New Position
+              display.setCaret(Obj3.coordX,40);
+              display.print("M");
+            }
+            else
+            {
+              Obj1.hasSpawned = false;
+            }
+          }
+          
+          if(Obj4.hasSpawned)
+          {
+            Obj4.coordX-=10;
+            if(Obj4.coordX >= 0)
+            {
+              // New Position
+              display.setCaret(Obj4.coordX,40);
+              display.print("M");
+            }
+            else
+            {
+              Obj4.hasSpawned = false;
+            }
+          }
+          
+          // Attempt to spawn an obstacle
+          if(!Obj1.hasSpawned)
+          {
+            Chnce = random(100);	// Generate number between 0-99
+            if(Chnce <= Obj1.SpawnChance)
+            {
+              Obj1.hasSpawned = true; 
+              Obj1.coordX = 120;
+              display.setCaret(Obj1.coordX,40);
+              display.print("M");
+            }
+          }
+          if(!Obj2.hasSpawned)
+          {
+            int Chnce = random(100);	// Generate number between 0-99
+            if(Chnce <= Obj2.SpawnChance)
+            {
+              Obj2.hasSpawned = true; 
+              Obj2.coordX = 120;
+              display.setCaret(Obj2.coordX,40);
+              display.print("M");
+            }
+          }
+          if(!Obj3.hasSpawned)
+          {
+            int Chnce = random(100);	// Generate number between 0-99
+            if(Chnce <= Obj3.SpawnChance)
+            {
+              Obj3.hasSpawned = true; 
+              Obj3.coordX = 120;
+              display.setCaret(Obj3.coordX,40);
+              display.print("M");
+            }
+          }
+          if(!Obj4.hasSpawned)
+          {
+            int Chnce = random(100);	// Generate number between 0-99
+            if(Chnce <= Obj4.SpawnChance)
+            {
+              Obj4.hasSpawned = true; 
+              Obj4.coordX = 120;
+              display.setCaret(Obj4.coordX,40);
+              display.print("M");
+            }
+          }
+          
+          // Collision Check
+          if(Obj1.coordX == 10 && !Airborne)
+          {
+            Alive = false;
+            State = 4;
+            break;
+          }
+          if(Obj2.coordX == 10 && !Airborne)
+          {
+            Alive = false;
+            State = 4;
+            break;
+          }
+          if(Obj3.coordX == 10 && !Airborne)
+          {
+            Alive = false;
+            State = 4;
+            break;
+          }
+          if(Obj4.coordX == 10 && !Airborne)
+          {
+            Alive = false;
+            State = 4;
+            break;
+          }
+          
+          // Check if the player is still airborne
+          if(JumpClock > 0)
+          {
+            JumpClock--;
+          }
+          else
+          {
+            Airborne = false;
+            PlayerY = 40;
+          }
+          
+          // Increase Score
+          if(Score < 99999)
+          {
+          	Score += 10;
+            if(Score > 10000)
+            {
+              Score == 99999;
+            }
+          }
+          display.setCaret(60,0);
+          display.setScale(1);
+          display.print("Score:");
+          display.setCaret(90,0);
+          display.print(Score);
+          
+          display.update();
+          display.clear();
+          display.setScale(2);
+          // End of Alive Loop
+          // Speed up game if condition is met
+          delay(GameSpeed);
+          if(GameSpeed > 250)	// Speed up game over time
+          {
+            GameSpeed-=5;
+          }
+            
+        }
+        
+       
+     	break;   
+     }
+     case 2:	// Options
+     {
+     	  display.clear();
+       	display.setCaret(10,5);
+        display.setScale(2);
+     	  display.print("Options");
+       
+       	switch(Change)
+        {
+          case 0:
+          {
+            display.setCaret(0,25);
+            display.setScale(1);
+            display.print(">Speed:");
+            display.setCaret(0,45);
+            display.print(" Back");
+            if(!fast)
+            {
+              	DiffSpeed = 900;
+              	display.setCaret(30,35);
+                display.setScale(1);
+                display.print("Slow");
+            }
+            else
+            {
+              	DiffSpeed = 650;
+              	display.setCaret(30,35);
+                display.setScale(1);
+                display.print("Fast");
+            }
+            if(Select)
+            {
+             	fast = !fast; 
+              	Select = false;
+            }
+           	break; 
+          }
+          case 1:
+          {
+            display.setCaret(0,25);
+            display.setScale(1);
+            display.print(" Speed:");
+            display.setCaret(0,45);
+            display.print(">Back");
+            
+            if(!fast)
+            {
+              	DiffSpeed = 900;
+              	display.setCaret(30,35);
+                display.setScale(1);
+                display.print("Slow");
+            }
+            else
+            {
+              	DiffSpeed = 750;
+              	display.setCaret(30,35);
+                display.setScale(1);
+                display.print("Fast");
+            }
+            
+            if(Select)
+            {
+              	Serial.println("If Statement Reached");
+              	State = 0;
+              	Select = false;
+              	Change = 0;
+            }
+            break;
+          }
+          default:
+          {
+           	break; 
+          }
+        }
+       	break;
+     }
+     case 3:	// Exit
+     {
+     	break;   
+     }
+     case 4:
+     {
+       	display.clear();
+       	display.setCaret(10,5);
+        display.setScale(2);
+     	  display.print("Game Over");
+       	display.setCaret(0,48);
+        display.setScale(1);
+       	display.print("Score:");
+        display.setCaret(50,48);
+       	display.print(Score);
+        display.update();
+       	delay(3000);
+       	State = 0;
+        break;
+     }
+      
+     default:	// Switch Default: Exit
+     {
+       	break; 
+     }
+  	};
+    
+    display.update();
+    delay(500);
+    
+  }
+  
+  display.clear(); 
+  display.update();
+  
+  delay(1000);
+}
