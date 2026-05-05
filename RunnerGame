@@ -30,6 +30,7 @@ int JumpClock = 0;		// Time spent in the air
 bool Alive = true;
 int Score = 0;
 long Chnce;
+int JumpCD = 0;
 
 // Object Coordinates
 int PlayerY = 40;			// Can be 0 or 1
@@ -77,7 +78,7 @@ void ButtonPress()
      }
      case 1:	// Game Running
      {
-        if(!Airborne)
+        if(!Airborne && JumpClock == 0)
         {
           Airborne = true;
           JumpClock = 2;
@@ -429,10 +430,20 @@ void loop()
             break;
           }
           
+          // Check if the player has a CD for Jumping
+          if(JumpCD > 0)
+          {
+            JumpCD--;
+          }
+
           // Check if the player is still airborne
           if(JumpClock > 0)
           {
             JumpClock--;
+            if(JumpClock == 0)
+            {
+             	JumpCD = 2; 
+            }
           }
           else
           {
