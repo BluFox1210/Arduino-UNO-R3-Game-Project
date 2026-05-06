@@ -93,10 +93,14 @@ void ButtonPress()
      }
      case 3:	// Exit
      {
-     	break;   
+        On = true;
+       	State = 0;
+     	  break;   
      }
      default:	// Switch Default: Exit
      {
+        On = true;
+       	State = 0;
        	break; 
      }
     };
@@ -138,10 +142,14 @@ void ButtonPress()
      case 3:	// Exit
      {
        	Serial.println("State 3:");
-     	break;   
+        On = true;
+       	State = 0;
+      	break;   
      }
      default:	// Switch Default: Exit
      {
+        On = true;
+       	State = 0;
        	break; 
      }
   	};
@@ -246,10 +254,9 @@ void loop()
             display.print(">Exit");
             if(Select)
             {
-              	State = 0;
+              	State = 3;
               	Select = false;
               	Change = 0;
-              	On = false;
             }
            	break; 
           }
@@ -560,7 +567,8 @@ void loop()
      }
      case 3:	// Exit
      {
-     	break;   
+        On = false;
+     	  break;   
      }
      case 4:
      {
