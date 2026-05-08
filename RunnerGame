@@ -78,7 +78,7 @@ void ButtonPress()
      }
      case 1:	// Game Running
      {
-        if(!Airborne && JumpClock == 0)
+        if(!Airborne && JumpCD == 0)
         {
           Airborne = true;
           JumpClock = 2;
